@@ -1,0 +1,60 @@
+name: Kernel Build Process
+permissions:
+  contents: write
+  actions: write
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: build kernel from ${{ github.actor }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: checkout kernel source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          repository: 'naifi1954/android_kernel_samsung_a22x'
+          reff: master
+          path: kernel_root
+
+      - name: Free Disk Space
+        if: true
+        uses: endersonmenezes/free-disk-space@v3  # Use @main for latest, @v3 for stable
+        with:
+          remove_android: true
+          remove_dotnet: true
+          remove_haskell: true
+          remove_tool_cache: true
+          remove_packages: "azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox postgresql* temurin-* *llvm* mysql* dotnet-sdk-*"
+          remove_packages_one_command: true
+          remove_folders: "/usr/share/swift /usr/share/miniconda /usr/share/az* /usr/local/lib/node_modules /usr/local/share/chromium /usr/local/share/powershell /usr/local/julia /usr/local/aws-cli /usr/local/aws-sam-cli /usr/share/gradle"
+          rm_cmd: "rmz"
+          rmz_version: "3.1.1"
+          testing: false
+
+      - name: Set Timezone
+        run: sudo ln -sf /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
+
+      - name: Build kernel
+        run: |
+          bash build.sh
+          echo "KV=$(strings out/arch/arm64/boot/Image | grep "Linux version")" >> $GITHUB_ENV
+        working-directory: kernel_root
+
+      - name: Upload To Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            kernel_root/*.zip
+            kernel_root/out/arch/arm64/boot/Image.gz
+          name: Kernel Samsung A22 5G
+          tag_name: ${{ github.run_id }}
+          body: |
+            Linux Version:
+            `${{ env.KV }}`
+              
+      
