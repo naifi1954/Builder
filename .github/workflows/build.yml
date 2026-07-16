@@ -38,8 +38,8 @@ jobs:
         run: |
           git clone --depth=1 https://github.com/naifi1954/toolchain.git -b clang-11 clang
           git clone --depth=1 https://github.com/naifi1954/toolchain.git -b gcc-4.9 gcc
-          echo "export PATH=$PWD/clang/bin:$PWD/gcc/bin$PATH"
-          echo "export CROSS_COMPILE=aarch64-linux-android-"
+          echo "export CROSS_COMPILE=$PWD/gcc/bin/aarch64-linux-android-"
+          echo "export PATH=$PWD/clang/bin:$PATH"
         working-directory: kernel_root
           
       - name: Build kernel
