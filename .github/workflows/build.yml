@@ -1,6 +1,15 @@
 name: Kernel Build
 on: 
   workflow_dispatch:
+    inputs:
+      REPO:
+        default: 'android_kernel_samsung_a22x'
+        description: 'Kernel Repo'
+        type: string
+      BRANCH:
+        default: 'master'
+        description: 'Kernel Branch'
+        type: string
 
 jobs:
   build:
@@ -16,8 +25,8 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 1
-          repository: 'naifi1954/android_kernel_samsung_a22x'
-          reff: master
+          repository: '${{ github.actor }}/${{ inputs.REPO }}'
+          reff: ${{ inputs.BRANCH }}
           path: kernel_root
 
       - name: Set Timezone && Install Dependency
