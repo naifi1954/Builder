@@ -1,14 +1,13 @@
-name: Kernel Build Process
-permissions:
-  contents: write
-  actions: write
-
+name: Kernel Build
 on: 
   workflow_dispatch:
 
 jobs:
   build:
-    name: build kernel from ${{ github.actor }}
+    permissions:
+      contents: write
+      actions: write
+    name: Build kernel from ${{ github.actor }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
 
@@ -21,28 +20,24 @@ jobs:
           reff: master
           path: kernel_root
 
-      - name: Free Disk Space
-        if: true
-        uses: endersonmenezes/free-disk-space@v3  # Use @main for latest, @v3 for stable
-        with:
-          remove_android: true
-          remove_dotnet: true
-          remove_haskell: true
-          remove_tool_cache: true
-          remove_packages: "azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox postgresql* temurin-* *llvm* mysql* dotnet-sdk-*"
-          remove_packages_one_command: true
-          remove_folders: "/usr/share/swift /usr/share/miniconda /usr/share/az* /usr/local/lib/node_modules /usr/local/share/chromium /usr/local/share/powershell /usr/local/julia /usr/local/aws-cli /usr/local/aws-sam-cli /usr/share/gradle"
-          rm_cmd: "rmz"
-          rmz_version: "3.1.1"
-          testing: false
+      - name: Set Timezone && Install Dependency
+        run: |
+          sudo apt install device-tree-compiler -y
+          sudo ln -sf /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
 
-      - name: Set Timezone
-        run: sudo ln -sf /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
-
+      - name: Setup Toolchain
+        run: |
+          git clone --depth=1 https://github.com/naifi1954/toolchain.git -b clang-11 clang
+          git clone --depth=1 https://github.com/naifi1954/toolchain.git -b androidcc-4.9 gcc
+          echo "export PATH=$PWD/clang/bin:$PWD/gcc/bin$PATH"
+          echo "export CROSS_COMPILE=aarch64-linux-android-"
+        working-directory: kernel_root
+          
       - name: Build kernel
         run: |
-          bash build.sh
-          echo "KV=$(strings out/arch/arm64/boot/Image | grep "Linux version")" >> $GITHUB_ENV
+          make ARCH=arm64 O=$PWD/out a22x_defconfig
+          make ARCH=arm64 O=$PWD/out -j$(nproc --all)
+          echo "KV=$(zcat out/arch/arm64/boot/Image.gz | strings | grep "Linux version" )" >> $GITHUB_ENV
         working-directory: kernel_root
 
       - name: Upload To Releases
