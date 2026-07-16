@@ -1,4 +1,4 @@
-name: Kernel Build
+name: Kernel Build Non-GKI
 on: 
   workflow_dispatch:
     inputs:
@@ -37,7 +37,7 @@ jobs:
       - name: Setup Toolchain
         run: |
           git clone --depth=1 https://github.com/naifi1954/toolchain.git -b clang-11 clang
-          git clone --depth=1 https://github.com/naifi1954/toolchain.git -b androidcc-4.9 gcc
+          git clone --depth=1 https://github.com/naifi1954/toolchain.git -b gcc-4.9 gcc
           echo "export PATH=$PWD/clang/bin:$PWD/gcc/bin$PATH"
           echo "export CROSS_COMPILE=aarch64-linux-android-"
         working-directory: kernel_root
@@ -53,12 +53,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            kernel_root/*.zip
+            kernel_root/out/arch/arm64/boot/Image
             kernel_root/out/arch/arm64/boot/Image.gz
           name: Kernel Samsung A22 5G
           tag_name: ${{ github.run_id }}
           body: |
             Linux Version:
             `${{ env.KV }}`
-              
-      
