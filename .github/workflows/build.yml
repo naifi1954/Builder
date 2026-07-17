@@ -52,7 +52,7 @@ jobs:
           sudo ln -sf /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
 
       - name: Setup ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.ccache
           key: ccache-${{ inputs.REPO }}-${{ inputs.DEFCONFIG }}-${{ github.run_id }}
@@ -127,7 +127,7 @@ jobs:
             . -x ".git*" -x "README.md"
 
       - name: Upload To Releases
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             kernel_root/out/arch/arm64/boot/Image
