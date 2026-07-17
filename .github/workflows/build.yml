@@ -1,5 +1,5 @@
 name: Kernel Build Non-GKI
-on: 
+on:
   workflow_dispatch:
     inputs:
       REPO:
@@ -14,6 +14,18 @@ on:
         default: 'a22x_defconfig'
         description: 'Kernel Defconfig'
         type: string
+      ANYKERNEL_REPO:
+        default: 'rufnxprjkt/AnyKernel3'
+        description: 'AnyKernel3 Repo'
+        type: string
+      ANYKERNEL_BRANCH:
+        default: 'a22x'
+        description: 'AnyKernel3 Branch'
+        type: string
+
+concurrency:
+  group: kernel-build-${{ github.ref }}-${{ inputs.REPO }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -25,42 +37,102 @@ jobs:
     timeout-minutes: 120
 
     steps:
-      - name: checkout kernel source
+      - name: Checkout kernel source
         uses: actions/checkout@v7
         with:
           fetch-depth: 1
           repository: '${{ github.actor }}/${{ inputs.REPO }}'
-          reff: ${{ inputs.BRANCH }}
+          ref: ${{ inputs.BRANCH }}
           path: kernel_root
 
-      - name: Set Timezone && Install Dependency
+      - name: Set Timezone && Install Dependencies
         run: |
-          sudo apt install device-tree-compiler -y
+          sudo apt-get update -y
+          sudo apt-get install -y device-tree-compiler bc bison flex libssl-dev ccache
           sudo ln -sf /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
+
+      - name: Setup ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ inputs.REPO }}-${{ inputs.DEFCONFIG }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-${{ inputs.REPO }}-${{ inputs.DEFCONFIG }}-
 
       - name: Setup Toolchain
         run: |
           git clone --depth=1 https://github.com/naifi1954/toolchain.git -b clang-11 clang
           git clone --depth=1 https://github.com/naifi1954/toolchain.git -b gcc-4.9 gcc
           git clone --depth=1 https://github.com/naifi1954/toolchain.git -b gcc-4.9 arm-gnu arm
-          echo "CROSS_COMPILE_ARM32=$PWD/arm/bin/arm-linux-gnueabi-" >> $GITHUB_ENV
-          echo "CROSS_COMPILE=$PWD/gcc/bin/aarch64-linux-android-" >> $GUTHUB_ENV
-          echo "PATH=$PWD/clang/bin/clang" >> $GITHUB_ENV
+
+          echo "$PWD/clang/bin" >> "$GITHUB_PATH"
+          echo "$PWD/gcc/bin" >> "$GITHUB_PATH"
+          echo "$PWD/arm/bin" >> "$GITHUB_PATH"
+
+          echo "CROSS_COMPILE=$PWD/gcc/bin/aarch64-linux-android-" >> "$GITHUB_ENV"
+          echo "CROSS_COMPILE_ARM32=$PWD/arm/bin/arm-linux-gnueabi-" >> "$GITHUB_ENV"
+          echo "CLANG_TRIPLE=aarch64-linux-gnu-" >> "$GITHUB_ENV"
+          echo "USE_CCACHE=1" >> "$GITHUB_ENV"
+          echo "CCACHE_DIR=$HOME/.ccache" >> "$GITHUB_ENV"
         working-directory: kernel_root
-          
+
+      - name: Verify Defconfig Exists
+        run: |
+          if [ ! -f "arch/arm64/configs/${{ inputs.DEFCONFIG }}" ]; then
+            echo "::error::Defconfig '${{ inputs.DEFCONFIG }}' not found in arch/arm64/configs/"
+            exit 1
+          fi
+        working-directory: kernel_root
+
       - name: Build kernel
         run: |
-          set +e
-          make ARCH=arm64 O=$PWD/out ${{ inputs.DEFCONFIG }}
-          set -e
-          make ARCH=arm64 O=$PWD/out -j$(nproc --all)
+          make ARCH=arm64 O=out CC="ccache clang" \
+            CROSS_COMPILE=${CROSS_COMPILE} \
+            CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} \
+            CLANG_TRIPLE=${CLANG_TRIPLE} \
+            ${{ inputs.DEFCONFIG }}
+
+          make ARCH=arm64 O=out CC="ccache clang" \
+            CROSS_COMPILE=${CROSS_COMPILE} \
+            CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} \
+            CLANG_TRIPLE=${CLANG_TRIPLE} \
+            -j$(nproc --all)
         working-directory: kernel_root
+
+      - name: Upload Build Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: kernel_root/out/.config
+          retention-days: 3
 
       - name: Kernel Information
         run: |
-          echo "KV=$(zcat out/arch/arm64/boot/Image.gz | strings | grep "Linux version" )" >> $GITHUB_ENV
-          echo "BUILD_DATE=$(TZ=Asia/Jakarta date +%Y%m%d)" >> $GITHUB_ENV
-          echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
+          echo "KV=$(strings out/arch/arm64/boot/Image | grep -m1 'Linux version')" >> "$GITHUB_ENV"
+          echo "BUILD_DATE=$(TZ=Asia/Jakarta date +%Y%m%d-%H%M)" >> "$GITHUB_ENV"
+          echo "COMMIT_ID=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "COMMIT_SHORT=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+        working-directory: kernel_root
+
+      - name: Package with AnyKernel3
+        run: |
+          git clone --depth=1 -b ${{ inputs.ANYKERNEL_BRANCH }} \
+            https://github.com/${{ inputs.ANYKERNEL_REPO }}.git anykernel
+
+          if [ -f kernel_root/out/arch/arm64/boot/Image.gz ]; then
+            cp kernel_root/out/arch/arm64/boot/Image anykernel/Image.gz
+          else
+            cp kernel_root/out/arch/arm64/boot/Image anykernel/Image
+          fi
+          
+          if [ -f kernel_root/out/arch/arm64/boot/dtbo.img ]; then
+            cp kernel_root/out/arch/arm64/boot/dtbo.img anykernel/dtbo.img
+          fi
+
+          cd anykernel
+          zip -r9 "../${{ inputs.DEFCONFIG }}-${{ env.BUILD_DATE }}-${{ env.COMMIT_SHORT }}.zip" \
+            . -x ".git*" -x "README.md"
 
       - name: Upload To Releases
         uses: softprops/action-gh-release@v2
@@ -68,9 +140,11 @@ jobs:
           files: |
             kernel_root/out/arch/arm64/boot/Image
             kernel_root/out/arch/arm64/boot/Image.gz
-          name: Kernel Samsung A22 5G
+            ${{ inputs.DEFCONFIG }}-${{ env.BUILD_DATE }}-${{ env.COMMIT_SHORT }}.zip
+          name: Kernel Build - ${{ env.BUILD_DATE }}
           tag_name: ${{ github.run_id }}
           body: |
-            Build Date: `${{ env.BUILD_DATE }}`
-            Linux Version: `${{ env.KV }}`
-            Commit: Most recent [commit](https://github.com/${{ github.actor }}/${{ inputs.REPO }}/commit/${{ env.COMMIT_ID }}) during building.
+            **Build Date:** `${{ env.BUILD_DATE }}`
+            **Linux Version:** `${{ env.KV }}`
+            **Defconfig:** `${{ inputs.DEFCONFIG }}`
+            **Commit:** [${{ env.COMMIT_SHORT }}](https://github.com/${{ github.actor }}/${{ inputs.REPO }}/commit/${{ env.COMMIT_ID }})
