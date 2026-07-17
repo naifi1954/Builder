@@ -10,6 +10,10 @@ on:
         default: 'master'
         description: 'Kernel Branch'
         type: string
+      DEFCONFIG:
+        default: 'a22x_defconfig'
+        description: 'Kernel Defconfig'
+        type: string
 
 jobs:
   build:
@@ -38,16 +42,25 @@ jobs:
         run: |
           git clone --depth=1 https://github.com/naifi1954/toolchain.git -b clang-11 clang
           git clone --depth=1 https://github.com/naifi1954/toolchain.git -b gcc-4.9 gcc
-          echo "export CROSS_COMPILE=$PWD/gcc/bin/aarch64-linux-android-"
-          echo "export CC=$PWD/clang/bin/clang"
+          git clone --depth=1 https://github.com/naifi1954/toolchain.git -b gcc-4.9 arm-gnu arm
+          echo "CROSS_COMPILE_ARM32=$PWD/arm/bin/arm-linux-gnueabi-" >> $GITHUB_ENV
+          echo "CROSS_COMPILE=$PWD/gcc/bin/aarch64-linux-android-" >> $GUTHUB_ENV
+          echo "PATH=$PWD/clang/bin/clang" >> $GITHUB_ENV
         working-directory: kernel_root
           
       - name: Build kernel
         run: |
-          make ARCH=arm64 O=$PWD/out a22x_defconfig
+          set +e
+          make ARCH=arm64 O=$PWD/out ${{ inputs.DEFCONFIG }}
+          set -e
           make ARCH=arm64 O=$PWD/out -j$(nproc --all)
-          echo "KV=$(zcat out/arch/arm64/boot/Image.gz | strings | grep "Linux version" )" >> $GITHUB_ENV
         working-directory: kernel_root
+
+      - name: Kernel Information
+        run: |
+          echo "KV=$(zcat out/arch/arm64/boot/Image.gz | strings | grep "Linux version" )" >> $GITHUB_ENV
+          echo "BUILD_DATE=$(TZ=Asia/Jakarta date +%Y%m%d)" >> $GITHUB_ENV
+          echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
       - name: Upload To Releases
         uses: softprops/action-gh-release@v2
@@ -58,5 +71,6 @@ jobs:
           name: Kernel Samsung A22 5G
           tag_name: ${{ github.run_id }}
           body: |
-            Linux Version:
-            `${{ env.KV }}`
+            Build Date: `${{ env.BUILD_DATE }}`
+            Linux Version: `${{ env.KV }}`
+            Commit: Most recent [commit](https://github.com/${{ github.actor }}/${{ inputs.REPO }}/commit/${{ env.COMMIT_ID }}) during building.
