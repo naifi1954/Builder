@@ -62,11 +62,8 @@ jobs:
       - name: Setup Toolchain
         run: |
           git clone --depth=1 https://github.com/naifi1954/toolchain.git -b clang-11 clang
-          sleep 2
           git clone --depth=1 https://github.com/naifi1954/toolchain.git -b gcc-4.9 gcc
-          sleep 2
-          git clone --depth=1 https://github.com/naifi1954/toolchain.git -b gcc-4.9 arm-gnu arm
-          sleep 2
+          git clone --depth=1 https://github.com/naifi1954/toolchain.git -b arm-gnu arm
 
           echo "$PWD/clang/bin" >> "$GITHUB_PATH"
           echo "$PWD/gcc/bin" >> "$GITHUB_PATH"
