@@ -79,7 +79,7 @@ jobs:
       - name: Verify Defconfig Exists
         run: |
           if [ ! -f "arch/arm64/configs/${{ inputs.DEFCONFIG }}" ]; then
-            echo "::error::Defconfig '${{ inputs.DEFCONFIG }}' not found in arch/arm64/configs/"
+            echo "::error::Defconfig '${{ inputs.DEFCONFIG }}' not found in arch/arm64/configs/${{ inputs.DEFCONFIG }}"
             exit 1
           fi
         working-directory: kernel_root
@@ -99,14 +99,6 @@ jobs:
             -j$(nproc --all)
         working-directory: kernel_root
 
-      - name: Upload Build Log on Failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: kernel_root/out/.config
-          retention-days: 3
-
       - name: Kernel Information
         run: |
           echo "KV=$(strings out/arch/arm64/boot/Image | grep -m1 'Linux version')" >> "$GITHUB_ENV"
@@ -121,7 +113,7 @@ jobs:
             https://github.com/${{ github.actor }}/${{ inputs.ANYKERNEL_REPO }}.git anykernel
 
           if [ -f kernel_root/out/arch/arm64/boot/Image.gz ]; then
-            cp kernel_root/out/arch/arm64/boot/Image anykernel/Image.gz
+            cp kernel_root/out/arch/arm64/boot/Image.gz anykernel/Image.gz
           else
             cp kernel_root/out/arch/arm64/boot/Image anykernel/Image
           fi
