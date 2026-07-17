@@ -15,7 +15,7 @@ on:
         description: 'Kernel Defconfig'
         type: string
       ANYKERNEL_REPO:
-        default: 'rufnxprjkt/AnyKernel3'
+        default: 'AnyKernel3'
         description: 'AnyKernel3 Repo'
         type: string
       ANYKERNEL_BRANCH:
@@ -118,7 +118,7 @@ jobs:
       - name: Package with AnyKernel3
         run: |
           git clone --depth=1 -b ${{ inputs.ANYKERNEL_BRANCH }} \
-            https://github.com/${{ inputs.ANYKERNEL_REPO }}.git anykernel
+            https://github.com/${{ github.actor }}/${{ inputs.ANYKERNEL_REPO }}.git anykernel
 
           if [ -f kernel_root/out/arch/arm64/boot/Image.gz ]; then
             cp kernel_root/out/arch/arm64/boot/Image anykernel/Image.gz
