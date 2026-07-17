@@ -123,7 +123,7 @@ jobs:
           fi
 
           cd anykernel
-          zip -r9 "../${{ inputs.DEFCONFIG }}-${{ env.BUILD_DATE }}-${{ env.COMMIT_SHORT }}.zip" \
+          zip -r9 "../${{ env.BUILD_DATE }}-${{ env.COMMIT_SHORT }}.zip" \
             . -x ".git*" -x "README.md"
 
       - name: Upload To Releases
@@ -132,8 +132,8 @@ jobs:
           files: |
             kernel_root/out/arch/arm64/boot/Image
             kernel_root/out/arch/arm64/boot/Image.gz
-            ${{ inputs.DEFCONFIG }}-${{ env.BUILD_DATE }}-${{ env.COMMIT_SHORT }}.zip
-          name: Kernel Build - ${{ env.BUILD_DATE }}
+            ${{ env.BUILD_DATE }}-${{ env.COMMIT_SHORT }}.zip
+          name: Kernel Build Samsung A22 5G - ${{ env.BUILD_DATE }}
           tag_name: ${{ github.run_id }}
           body: |
             **Build Date:** `${{ env.BUILD_DATE }}`
