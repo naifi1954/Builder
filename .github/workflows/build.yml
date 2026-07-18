@@ -138,5 +138,5 @@ jobs:
           body: |
             **Build Date:** `${{ env.BUILD_DATE }}`
             **Linux Version:** `${{ env.KV }}`
-            **Defconfig:** `${{ inputs.DEFCONFIG }}`
+            
             **Commit:** [${{ env.COMMIT_SHORT }}](https://github.com/${{ github.actor }}/${{ inputs.REPO }}/commit/${{ env.COMMIT_ID }})
