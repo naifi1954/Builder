@@ -48,7 +48,7 @@ jobs:
       - name: Set Timezone && Install Dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y device-tree-compiler bc bison flex libssl-dev ccache
+          sudo apt-get install -y device-tree-compiler bc bison flex libssl-dev ccache aria2
           sudo ln -sf /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
 
       - name: Setup ccache
@@ -61,16 +61,13 @@ jobs:
 
       - name: Setup Toolchain
         run: |
-          git clone --depth=1 https://github.com/naifi1954/toolchain.git -b clang-11 clang
-          git clone --depth=1 https://github.com/naifi1954/toolchain.git -b gcc-4.9 gcc
-          git clone --depth=1 https://github.com/naifi1954/toolchain.git -b arm-gnu arm
-
+          if [ -d $PWD/clang ]; then
+            aria2c https://github.com/bachnxuan/aosp_clang_mirror/releases/download/clang-r547379-13174946/clang-r547379.tar.gz
+            mkdir ./clang && tar -xvf clang-r547379.tar.gz -C ./clang
+          fi
           echo "$PWD/clang/bin" >> "$GITHUB_PATH"
-          echo "$PWD/gcc/bin" >> "$GITHUB_PATH"
-          echo "$PWD/arm/bin" >> "$GITHUB_PATH"
 
-          echo "CROSS_COMPILE=$PWD/gcc/bin/aarch64-linux-android-" >> "$GITHUB_ENV"
-          echo "CROSS_COMPILE_ARM32=$PWD/arm/bin/arm-linux-gnueabi-" >> "$GITHUB_ENV"
+          echo "CROSS_COMPILE=aarch64-linux-gnu-" >> "$GITHUB_ENV"
           echo "CLANG_TRIPLE=aarch64-linux-gnu-" >> "$GITHUB_ENV"
           echo "USE_CCACHE=1" >> "$GITHUB_ENV"
           echo "CCACHE_DIR=$HOME/.ccache" >> "$GITHUB_ENV"
@@ -88,13 +85,15 @@ jobs:
         run: |
           make ARCH=arm64 O=out CC="ccache clang" \
             CROSS_COMPILE=${CROSS_COMPILE} \
-            CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} \
+            LLVM= 1 \
+            LLVM_IAS=1 \
             CLANG_TRIPLE=${CLANG_TRIPLE} \
             ${{ inputs.DEFCONFIG }}
 
           make ARCH=arm64 O=out CC="ccache clang" \
             CROSS_COMPILE=${CROSS_COMPILE} \
-            CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} \
+            LLVM= 1 \
+            LLVM_IAS=1 \
             CLANG_TRIPLE=${CLANG_TRIPLE} \
             -j$(nproc --all)
         working-directory: kernel_root
