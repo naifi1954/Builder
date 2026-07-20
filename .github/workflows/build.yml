@@ -86,7 +86,7 @@ jobs:
         run: |
           make ARCH=arm64 O=out CC="ccache clang" \
             CROSS_COMPILE=${CROSS_COMPILE} \
-            LD=lld.ld
+            LD=lld.ld \
             LLVM=1 \
             LLVM_IAS=1 \
             CLANG_TRIPLE=${CLANG_TRIPLE} \
@@ -94,6 +94,7 @@ jobs:
 
           make ARCH=arm64 O=out CC="ccache clang" \
             CROSS_COMPILE=${CROSS_COMPILE} \
+            LD=lld.ld \
             LLVM=1 \
             LLVM_IAS=1 \
             CLANG_TRIPLE=${CLANG_TRIPLE} \
