@@ -61,9 +61,10 @@ jobs:
 
       - name: Setup Toolchain
         run: |
-          if [ -d $PWD/clang ]; then
-            aria2c https://github.com/bachnxuan/aosp_clang_mirror/releases/download/clang-r547379-13174946/clang-r547379.tar.gz
-            mkdir ./clang && tar -xvf clang-r547379.tar.gz -C ./clang
+          if [ ! -d $PWD/clang ]; then
+            mkdir -p ./clang
+            aria2c -x16 -s16 -o clang.tar.gz https://github.com/bachnxuan/aosp_clang_mirror/releases/download/clang-r547379-13174946/clang-r547379.tar.gz
+            tar -xf clang.tar.gz -C ./clang
           fi
           echo "$PWD/clang/bin" >> "$GITHUB_PATH"
 
@@ -85,14 +86,14 @@ jobs:
         run: |
           make ARCH=arm64 O=out CC="ccache clang" \
             CROSS_COMPILE=${CROSS_COMPILE} \
-            LLVM= 1 \
+            LLVM=1 \
             LLVM_IAS=1 \
             CLANG_TRIPLE=${CLANG_TRIPLE} \
             ${{ inputs.DEFCONFIG }}
 
           make ARCH=arm64 O=out CC="ccache clang" \
             CROSS_COMPILE=${CROSS_COMPILE} \
-            LLVM= 1 \
+            LLVM=1 \
             LLVM_IAS=1 \
             CLANG_TRIPLE=${CLANG_TRIPLE} \
             -j$(nproc --all)
