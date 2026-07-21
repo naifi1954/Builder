@@ -86,6 +86,8 @@ jobs:
 
       - name: Build kernel
         run: |
+          export LLVM=1
+          export LLVM_IAS=1
           make ARCH=arm64 O=out CC="ccache clang" \
             CROSS_COMPILE=${CROSS_COMPILE} \
             CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} \
