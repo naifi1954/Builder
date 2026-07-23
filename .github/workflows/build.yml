@@ -61,18 +61,24 @@ jobs:
 
       - name: Build kernel
         run: |
-          if [ ! -d $PWD/toolchain ]; then
-            wget https://github.com/bachnxuan/aosp_clang_mirror/releases/download/clang-r547379-13174946/clang-r547379.tar.gz -o clang.tar.gz
-            mkdir toolchain && tar -xvf clang.tar.gz -C toolchain
+          if [ ! -d "$PWD/toolchain" ]; then
+            wget -O clang.tar.gz https://github.com/bachnxuan/aosp_clang_mirror/releases/download/clang-r547379-13174946/clang-r547379.tar.gz
+            mkdir -p toolchain && tar -xf clang.tar.gz -C toolchain
           fi
-          git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
+
+          export PATH="$PWD/toolchain/bin:$PATH"
           echo "$PWD/toolchain/bin" >> "$GITHUB_PATH"
+
+          export ARCH=arm64
           export LLVM=1
           export LLVM_IAS=1
+          export CLANG_TRIPLE=aarch64-linux-gnu-
           export CROSS_COMPILE=aarch64-linux-gnu-
-          export CLANG_TRIPLE=$CROSS_COMPILE
           export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
-          
+
+          which clang
+          clang --version
+
           make ARCH=arm64 O=out ${{ inputs.DEFCONFIG }}
           make ARCH=arm64 O=out -j$(nproc --all)
         working-directory: kernel_root
