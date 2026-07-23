@@ -51,31 +51,6 @@ jobs:
           sudo apt-get install -y device-tree-compiler bc bison flex libssl-dev ccache
           sudo ln -sf /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
 
-      - name: Setup ccache
-        uses: actions/cache@v5
-        with:
-          path: ~/.ccache
-          key: ccache-${{ inputs.REPO }}-${{ inputs.DEFCONFIG }}-${{ github.run_id }}
-          restore-keys: |
-            ccache-${{ inputs.REPO }}-${{ inputs.DEFCONFIG }}-${{ github.run_id }}
-
-      - name: Setup Toolchain
-        run: |
-          git clone --depth=1 https://github.com/naifi1954/toolchain.git -b clang-11 clang
-          git clone --depth=1 https://github.com/naifi1954/toolchain.git -b gcc-4.9 gcc
-          git clone --depth=1 https://github.com/naifi1954/toolchain.git -b arm-gnu arm
-
-          echo "$PWD/clang/bin" >> "$GITHUB_PATH"
-          echo "$PWD/gcc/bin" >> "$GITHUB_PATH"
-          echo "$PWD/arm/bin" >> "$GITHUB_PATH"
-
-          echo "CROSS_COMPILE=$PWD/gcc/bin/aarch64-linux-android-" >> "$GITHUB_ENV"
-          echo "CROSS_COMPILE_ARM32=$PWD/arm/bin/arm-linux-gnueabi-" >> "$GITHUB_ENV"
-          echo "CLANG_TRIPLE=aarch64-linux-gnu-" >> "$GITHUB_ENV"
-          echo "USE_CCACHE=1" >> "$GITHUB_ENV"
-          echo "CCACHE_DIR=$HOME/.ccache" >> "$GITHUB_ENV"
-        working-directory: kernel_root
-
       - name: Verify Defconfig Exists
         run: |
           if [ ! -f "arch/arm64/configs/${{ inputs.DEFCONFIG }}" ]; then
@@ -86,20 +61,15 @@ jobs:
 
       - name: Build kernel
         run: |
+          git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
+          echo "$PWD/clang/bin" >> "$GITHUB_PATH"
           export LLVM=1
           export LLVM_IAS=1
+          export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+          export CC=ccache clang
           
-          make ARCH=arm64 O=out CC="ccache clang" \
-            CROSS_COMPILE=${CROSS_COMPILE} \
-            CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} \
-            CLANG_TRIPLE=${CLANG_TRIPLE} \
-            ${{ inputs.DEFCONFIG }}
-
-          make ARCH=arm64 O=out CC="ccache clang" \
-            CROSS_COMPILE=${CROSS_COMPILE} \
-            CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} \
-            CLANG_TRIPLE=${CLANG_TRIPLE} \
-            -j$(nproc --all)
+          make ARCH=arm64 O=out ${{ inputs.DEFCONFIG }}
+          make ARCH=arm64 O=out -j$(nproc --all)
         working-directory: kernel_root
 
       - name: Kernel Information
