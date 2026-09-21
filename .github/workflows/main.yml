@@ -16,21 +16,24 @@ jobs:
 
     - name: Prepare timezone fix
       run: |
-        sudo rm /etc/localtime
+        sudo rm -f /etc/localtime
         sudo ln -s /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
 
     - name: Build Kernel
       run: |
-        cd kernel_root
+        cd rootdir
         git clone --depth=1 https://github.com/naifi1954/toolchain.git -b clang-12 ./clang
         git clone --depth=1 https://github.com/naifi1954/toolchain.git -b gcc-4.9 ./gcc
         ./clang/bin/clang --version
 
-        # Setup Enviroment
-        export CC=./clang/bin/"ccache clang"
-        export CROSS_COMPILE=./gcc/bin/aarch64-linux-android-
+        export PATH="$(pwd)/clang/bin:$(pwd)/gcc/bin:$PATH"
+        export CC="ccache clang"
+        export CROSS_COMPILE=aarch64-linux-android-
         export CLANG_TRIPLE=aarch64-linux-gnu-
 
-        if -f [ ./out/arch/arm64/boot/Image.gz ]; then
+        make -j$(nproc) O=out ARCH=arm64 a22x_defconfig
+        make -j$(nproc) O=out ARCH=arm64 CC="$CC" CROSS_COMPILE="$CROSS_COMPILE" CLANG_TRIPLE="$CLANG_TRIPLE"
+
+        if [ -f ./out/arch/arm64/boot/Image.gz ]; then
           echo "Build Success"
         fi
