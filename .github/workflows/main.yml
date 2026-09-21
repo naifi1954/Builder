@@ -36,7 +36,7 @@ jobs:
 
         if [ -f ./out/arch/arm64/boot/Image.gz ]; then
           echo "Build Success"
-          cd kernel_root
+          cd rootdir
           git clone --depth=1 https://github.com/naifi1954/AnyKernel3.git -b a22x AK
           cp ./out/arch/arm64/boot/Image.gz AK
           cd AK && zip -r9 ../AnyKernel3-a22x.zip *
@@ -46,7 +46,7 @@ jobs:
       uses: softprops/action-gh-release@v3
       with:
         files: |
-          kernel_root/*.zip
+          rootdir/*.zip
         name: Kernel Samsung A22 5G
         tag_name: ${{ github.run_id }}
         body: |
