@@ -1,0 +1,36 @@
+name: Build Kernel
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        repository: 'rufnx-prjkt/android_kernel_samsung_a22x'
+        ref: 'master'
+        path: rootdir
+        show-progress: false
+        fetch-depth: 1
+
+    - name: Prepare timezone fix
+      run: |
+        sudo rm /etc/localtime
+        sudo ln -s /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
+
+    - name: Build Kernel
+      run: |
+        cd kernel_root
+        git clone --depth=1 https://github.com/naifi1954/toolchain.git -b clang-12 ./clang
+        git clone --depth=1 https://github.com/naifi1954/toolchain.git -b gcc-4.9 ./gcc
+        ./clang/bin/clang --version
+
+        # Setup Enviroment
+        export CC=./clang/bin/"ccache clang"
+        export CROSS_COMPILE=./gcc/bin/aarch64-linux-android-
+        export CLANG_TRIPLE=aarch64-linux-gnu-
+
+        if -f [ ./out/arch/arm64/boot/Image.gz ]; then
+          echo "Build Success"
+        fi
