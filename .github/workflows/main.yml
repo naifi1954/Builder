@@ -36,10 +36,12 @@ jobs:
 
         if [ -f ./out/arch/arm64/boot/Image.gz ]; then
           echo "Build Success"
-          cd rootdir
           git clone --depth=1 https://github.com/naifi1954/AnyKernel3.git -b a22x AK
           cp ./out/arch/arm64/boot/Image.gz AK
           cd AK && zip -r9 ../AnyKernel3-a22x.zip *
+        else
+          echo "Build Failed - Image.gz not found"
+          exit 1
         fi
 
     - name: Upload to Release
